@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <color name="blue_1">#FF378BFB</color>
+  <color name="adView_txt">#ffffffff</color>  <color name="blue_2">#ff1352A2</color>
+    <color name="yellow_1">#FFFF910C</color>
+    <color name="yellow_2">#ffB25704</color>
+
+    <color name="white">#ffffff</color>
+    <color name="blue">#0000ff</color>
+    <color name="dark">#B2B2B2</color>
+    <color name="green">#b2ffb2</color>
+    <color name="gray">#FF8b8b8b</color>
+</resources>

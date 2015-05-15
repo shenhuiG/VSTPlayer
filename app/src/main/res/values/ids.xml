@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <item name="controll_title" type="id"/>
+    <item name="controll_speed" type="id"/>
+    <item name="controll_scale" type="id"/>
+    <item name="controll_quality" type="id"/>
+    <item name="controll_platform" type="id"/>
+    <item name="controll_clock" type="id"/>
+    <item name="controll_seekbar" type="id"/>
+    <item name="controll_duration" type="id"/>
+    <item name="controll_position" type="id"/>
+    <item name="menu_controller_wheel" type="id"/>
+    <item name="menu_controller_container" type="id"/>
+    <item name="hierarchy_view_head" type="id"/>
+    <item name="hierarchy_view_list" type="id"/>
+    <item name="hierarchy_view_list_empty" type="id"/>
+    <item name="live_fav_icon" type="id"/>
+    <item name="live_channel_name" type="id"/>
+    <item name="live_channel_num" type="id"/>
+    <item name="live_channel_current_epg" type="id"/>
+    <item name="live_epg_txt" type="id"/>
+    <item name="live_epg_time" type="id"/>
+    <item name="live_epg_status" type="id"/>
+    <item name="live_day_date" type="id"/>
+    <item name="live_day_week" type="id"/>
+    <item name="touch_source_layout" type="id"/>
+    <item name="touch_scale_layout" type="id"/>
+    <item name="touch_decode_layout" type="id"/>
+    <item name="touch_light_seek" type="id"/>
+    <item name="id1" type="id"/>
+    <item name="id2" type="id"/>
+    <item name="id3" type="id"/>
+    <item name="id4" type="id"/>
+    <item name="id5" type="id"/>
+    <item name="id6" type="id"/>
+
+</resources>

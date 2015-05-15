@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true" android:drawable="@drawable/focus"/>
+    <item android:state_selected="true" android:drawable="@drawable/focus"/>
+    <item android:state_checked="true" android:drawable="@drawable/focus"/>
+    <item>
+        <shape>
+            <!--<padding android:left="21px" android:right="21px" android:top="21px" android:bottom="21px"/>-->
+            <solid android:color="@android:color/transparent"/>
+        </shape>
+    </item>
+</selector>

@@ -84,7 +84,8 @@
     <orderEntry type="jdk" jdkName="Android API 18 Platform" jdkType="Android SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" exported="" name="pinyin4j-2.5.0" level="project" />
+    <orderEntry type="library" exported="" name="support-v4-20.0.0" level="project" />
     <orderEntry type="library" exported="" name="org.videolan.libvlc2146_local" level="project" />
-    <orderEntry type="library" name="android-support-v4 (2)" level="project" />
+    <orderEntry type="library" exported="" name="support-annotations-20.0.0" level="project" />
   </component>
 </module>

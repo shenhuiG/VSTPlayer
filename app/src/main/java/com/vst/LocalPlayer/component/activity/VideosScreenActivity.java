@@ -1,7 +1,7 @@
 package com.vst.LocalPlayer.component.activity;
 
-import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.database.Cursor;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
@@ -15,7 +15,7 @@ import android.widget.*;
 
 import com.vst.LocalPlayer.MediaStoreNotifier;
 import com.vst.LocalPlayer.R;
-import com.vst.LocalPlayer.Utils;
+import com.vst.LocalPlayer.UUtils;
 import com.vst.LocalPlayer.component.provider.MediaStore;
 import com.vst.LocalPlayer.model.MediaInfo;
 import com.vst.LocalPlayer.widget.ContextMenuImpl;
@@ -28,7 +28,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-public class VideosScreenActivity extends Activity implements MediaStoreNotifier.CallBack, MenuBuild.onMenuListener {
+public class VideosScreenActivity extends BaseActivity implements MediaStoreNotifier.CallBack, MenuBuild.onMenuListener {
 
     public static final String TAG = "VideosScreen";
     private Context mContext;
@@ -179,10 +179,9 @@ public class VideosScreenActivity extends Activity implements MediaStoreNotifier
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 MediaInfo info = (MediaInfo) parent.getAdapter().getItem(position);
-                Uri uri = Utils.getMediaUri(info.path);
-
+                Uri uri = UUtils.getMediaUri(info.path);
                 if (uri != null) {
-                    Utils.playMediaFile(mContext, uri, info.id, info.deviceId, info.devicePath);
+                    UUtils.playMediaFile(mContext, uri, info);
                 } else {
                     Toast.makeText(mContext, "该影片不存在 路径：" + "盘:" + info.path, Toast.LENGTH_LONG).show();
                 }
@@ -199,8 +198,29 @@ public class VideosScreenActivity extends Activity implements MediaStoreNotifier
                 mContextMenu = new ContextMenuImpl(mContext.getApplicationContext())
                         .setTitle("菜单")
                         .addMenuItem(new MenuBuild.MenuItem(MENU_ID_ITEM_DELETE, "删除", getResources().getDrawable(R.drawable.icon_menu_search)))
-                        .addMenuItem(new MenuBuild.MenuItem(MENU_ID_ITEM_EDIT, "编辑", getResources().getDrawable(R.drawable.icon_menu_all)))
-                        .setOnMenuListener(VideosScreenActivity.this)
+                                //.addMenuItem(new MenuBuild.MenuItem(MENU_ID_ITEM_EDIT, "编辑", getResources().getDrawable(R.drawable.icon_menu_all)))
+                        .setOnMenuListener(new MenuBuild.onMenuListener() {
+                            @Override
+                            public void onMenuItemOnClick(MenuBuild.MenuItem item) {
+                                switch (item.id) {
+                                    case MENU_ID_ITEM_DELETE:
+                                        int i = mContext.getContentResolver().delete(MediaStore.getContentUri(MediaStore.MediaBase.TABLE_NAME, info.id), null, null);
+                                        break;
+                                    case MENU_ID_ITEM_EDIT:
+
+
+                                        break;
+                                }
+                            }
+
+                            @Override
+                            public void onMenuItemOnSelection(MenuBuild.MenuItem item) {
+                            }
+
+                            @Override
+                            public void onMenuDismiss() {
+                            }
+                        })
                         .create();
                 mContextMenu.showAtLocation(mGridView, Gravity.CENTER, 0, 0);
                 ImageView poster = (ImageView) mContextMenu.getContentView().findViewWithTag("poster");
@@ -215,10 +235,7 @@ public class VideosScreenActivity extends Activity implements MediaStoreNotifier
             }
         });
         mGridView.setNumColumns(5);
-        //mGridView.setColumnWidth(com.vst.dev.common.util.Utils.getFitSize(mContext, 150));
-        //mGridView.setStretchMode(GridView.STRETCH_SPACING_UNIFORM);
         mGridView.setHorizontalSpacing(com.vst.dev.common.util.Utils.getFitSize(mContext, 20));
-        //mGridView.setVerticalSpacing(com.vst.dev.common.util.Utils.getFitSize(mContext, 20));
         root.addView(mGridView);
         setContentView(root);
     }
@@ -230,6 +247,10 @@ public class VideosScreenActivity extends Activity implements MediaStoreNotifier
         switch (mMenuItemId) {
             case MENU_ID_SEARCH:
                 //跳转到搜索
+                Intent intent = new Intent(mContext, SearchActivity.class);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                intent.setPackage(mContext.getPackageName());
+                mContext.startActivity(intent);
                 break;
             case MENU_ID_RECORD:
                 mArray.clear();
@@ -338,7 +359,17 @@ public class VideosScreenActivity extends Activity implements MediaStoreNotifier
             }
         }
         if (mTextView != null) {
-            mTextView.setText("视频 " + mArray.size() + " 部");
+            switch (mMenuItemId) {
+                case MENU_ID_RECORD:
+                    mTextView.setText("最近播放 " + mArray.size() + " 部");
+                    break;
+                case MENU_ID_ADD:
+                    mTextView.setText("最近添加 " + mArray.size() + " 部");
+                    break;
+                case MENU_ID_ALL:
+                    mTextView.setText("全部视频 " + mArray.size() + " 部");
+                    break;
+            }
         }
     }
 
@@ -398,9 +429,12 @@ public class VideosScreenActivity extends Activity implements MediaStoreNotifier
                 TextView text = new TextView(getContext());
                 com.vst.dev.common.util.Utils.applyFace(text);
                 text.setSingleLine(true);
-                text.setPadding(0, 0, 0, com.vst.dev.common.util.Utils.getFitSize(mContext, 15));
+                text.setPadding(com.vst.dev.common.util.Utils.getFitSize(mContext, 8), 0, com.vst.dev.common.util.Utils
+                        .getFitSize(mContext, 8), com.vst.dev.common.util.Utils.getFitSize(mContext, 15));
+                text.setGravity(Gravity.CENTER);
                 text.setTextSize(TypedValue.COMPLEX_UNIT_PX, com.vst.dev.common.util.Utils.getFitSize(mContext, 24));
                 text.setEllipsize(TextUtils.TruncateAt.MARQUEE);
+                text.setTextColor(getResources().getColorStateList(R.color.videos_menu_text));
                 text.setMarqueeRepeatLimit(Integer.MAX_VALUE);
                 layout.addView(imageContainer, -2, -2);
                 layout.addView(text, -1, -2);
@@ -412,7 +446,9 @@ public class VideosScreenActivity extends Activity implements MediaStoreNotifier
                 holder = (ViewHolder) convertView.getTag();
             }
             MediaInfo info = getItem(position);
-            holder.name.setText(null == info.title ? info.name : info.title);
+            String s = null == info.title ? info.name : info.title;
+            s = UUtils.smartAAMediaName(s);
+            holder.name.setText(s.replace("-", "- "));
             if (info.poster != null) {
                 fetcher.loadImage(info.poster, holder.poster, R.drawable.poster_default);
             } else {

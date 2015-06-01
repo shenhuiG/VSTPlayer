@@ -52,15 +52,28 @@ public class MediaStoreProvider extends ContentProvider {
     public int delete(Uri uri, String selection, String[] selectionArgs) {
         mDataBase = mDBHelper.getWritableDatabase();
         int count = 0;
+        long rowId;
+        try {
+            rowId = ContentUris.parseId(uri);
+        } catch (Exception e) {
+            rowId = -1;
+        }
         switch (sMatcher.match(uri)) {
             case MEDIA_BASE_ITEM:
+            case MEDIA_BASE_ITEM_ID:
+                if (rowId >= 0) {
+                    selection = MediaStore.MediaBase.TABLE_NAME + "." + MediaStore.MediaBase._ID + "=?";
+                    selectionArgs = new String[]{Long.toString(rowId)};
+                }
                 count = mDataBase.delete(MediaStore.MediaBase.TABLE_NAME, selection, selectionArgs);
                 break;
-            case MEDIA_BASE_ITEM_ID:
-                break;
             case MEDIA_DEVICE_ITEM:
-                break;
             case MEDIA_DEVICE_ITEM_ID:
+                if (rowId >= 0) {
+                    selection = MediaStore.MediaDevice.TABLE_NAME + "." + MediaStore.MediaDevice._ID + "=?";
+                    selectionArgs = new String[]{Long.toString(rowId)};
+                }
+                count = mDataBase.delete(MediaStore.MediaDevice.TABLE_NAME, selection, selectionArgs);
                 break;
             case MEDIA_INFO_ITEM:
                 break;

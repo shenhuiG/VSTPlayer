@@ -1,21 +1,22 @@
 package com.vst.LocalPlayer.component.service;
 
 import android.app.IntentService;
-import android.content.ContentResolver;
-import android.content.ContentUris;
-import android.content.ContentValues;
-import android.content.Context;
-import android.content.Intent;
+import android.content.*;
 import android.database.Cursor;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
+import android.os.Bundle;
 import android.util.Log;
 
+import com.vst.LocalPlayer.UpgradeUtils;
 import com.vst.LocalPlayer.model.IMDBApi;
 import com.vst.LocalPlayer.model.NFOApi;
-import com.vst.LocalPlayer.Utils;
+import com.vst.LocalPlayer.UUtils;
 import com.vst.LocalPlayer.component.provider.MediaStore;
 import com.vst.LocalPlayer.component.provider.MediaStoreHelper;
+import com.vst.LocalPlayer.widget.WindowLoadingHelper;
+import com.vst.dev.common.util.MD5Util;
+import com.vst.dev.common.util.Utils;
 
 import java.io.File;
 import java.io.FileFilter;
@@ -29,6 +30,7 @@ public class MyIntentService extends IntentService {
     private static final String ACTION_ENTRY_INFO_PATH = "path";
     private static final String ACTION_ENTRY_INFO_META_TITLE = "metaTitle";
     private static final String ACTION_ENTRY_INFO_MEDIA_ID = "mediaId";
+    private static final String ACTION_UPGRADE = "com.vst.LocalPlayer.component.service.action.UPGRADE";
 
     public static void startActionScanner(Context context, String devicePath, long deviceId) {
         Intent intent = new Intent(context, MyIntentService.class);
@@ -55,6 +57,45 @@ public class MyIntentService extends IntentService {
         context.startService(intent);
     }
 
+    public static void startActionUpgrade(Context context) {
+        Intent intent = new Intent(context, MyIntentService.class);
+        intent.setAction(ACTION_UPGRADE);
+        context.startService(intent);
+    }
+
+
+    private static void handleActionUpgrad(Context context) {
+        //从sp中获取信息
+        Bundle b = UpgradeUtils.getUpgradeInfoFromSp(context);
+        if (b == null) {
+            b = UpgradeUtils.getUpgradeInfoFromNet(context);
+        }
+        if (b == null) {
+            return;
+        }
+        File apkFile = UpgradeUtils.getApkFile(context);
+        if (apkFile.exists()) {
+            if (MD5Util.getFileMD5String(apkFile).equalsIgnoreCase(b.getString(UpgradeUtils.MD5))) {
+                //发送更新提示
+                Utils.modifyFile(apkFile);
+                b.putParcelable(UpgradeUtils.APK_FILE_URI, Uri.fromFile(apkFile));
+                UpgradeUtils.sendUpgradeBrodCast(context, b);
+                return;
+            } else {
+                apkFile.delete();
+            }
+        }
+        String url = b.getString(UpgradeUtils.URL);
+        String md5 = b.getString(UpgradeUtils.MD5);
+        if (UpgradeUtils.saveApkFile(context, url, md5)) {
+            //发送更新提示
+            Utils.modifyFile(apkFile);
+            b.putParcelable(UpgradeUtils.APK_FILE_URI, Uri.fromFile(apkFile));
+            UpgradeUtils.sendUpgradeBrodCast(context, b);
+            return;
+        }
+    }
+
     public MyIntentService() {
         super("IntentService");
     }
@@ -78,8 +119,23 @@ public class MyIntentService extends IntentService {
                 long id = intent.getLongExtra(ACTION_ENTRY_INFO_MEDIA_ID, -1);
                 String mataTitle = intent.getStringExtra(ACTION_ENTRY_INFO_META_TITLE);
                 handlerActionMediaInfo(getContentResolver(), path, mataTitle, id);
+            } else if (ACTION_UPGRADE.equals(action)) {
+                handleActionUpgrad(this);
             }
         }
+    }
+
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        WindowLoadingHelper.setLaoding(this, true);
+        return super.onStartCommand(intent, flags, startId);
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        WindowLoadingHelper.setLaoding(this, false);
     }
 
     private void handlerActionAddMedia(ContentResolver cr, String mediaPath, String devicePath, long deviceId) {
@@ -139,12 +195,12 @@ public class MyIntentService extends IntentService {
             sourceID = NFOApi.getImdbIdFromNFOFile(mediaPath);
             Log.w("Info", "FromNFO imdb=" + sourceID);
             if (sourceID == null) {
-                if (metaTitle != null) {
-                    sourceID = IMDBApi.getImdbIdFromSearch(metaTitle, null);
-                } else {
-                    String name = Utils.smartMediaName(mediaFile.getName());
-                    sourceID = IMDBApi.getImdbIdFromSearch(name, null);
-                }
+//                if (metaTitle != null) {
+//                    sourceID = IMDBApi.getImdbIdFromSearch(metaTitle, null);
+//                } else {
+//                    String name = UUtils.smartMediaName(mediaFile.getName());
+//                    sourceID = IMDBApi.getImdbIdFromSearch(name, null);
+//                }
             }
             Log.w("Info", "FromIMDB imdb=" + sourceID);
             if (sourceID != null) {
@@ -226,7 +282,7 @@ public class MyIntentService extends IntentService {
         }
         File file = sda;
         if (file.isDirectory()) {
-            if (Utils.isBDMV(file)) {
+            if (UUtils.isBDMV(file)) {
                 handlerActionAddMedia(cr, file.getAbsolutePath(), devicePath, deviceId);
             } else {
                 File[] files = file.listFiles(new FileFilter() {
@@ -237,7 +293,7 @@ public class MyIntentService extends IntentService {
                             if (filename.contains("$REC")) {
                                 return false;
                             }
-                            if (Utils.fileIsVideo(pathname)) {
+                            if (UUtils.fileIsVideo(pathname)) {
                                 return true;
                             }
                             if (pathname.isDirectory()) {

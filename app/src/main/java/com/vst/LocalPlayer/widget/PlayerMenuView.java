@@ -6,6 +6,7 @@ import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.text.TextUtils;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.*;
@@ -16,10 +17,11 @@ import com.vst.dev.common.media.SubTrack;
 import com.vst.dev.common.util.Utils;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 
-public class LocalMenuView2 extends LinearLayout {
+public class PlayerMenuView extends FrameLayout {
 
     public interface Control {
 
@@ -50,7 +52,6 @@ public class LocalMenuView2 extends LinearLayout {
         public void setSubTrack(SubTrack track);
     }
 
-
     private static final int GROUP_CYCLE = 1;
     private static final int GROUP_SUBTITLE = 2;
     private static final int GROUP_DECODE = 3;
@@ -65,13 +66,20 @@ public class LocalMenuView2 extends LinearLayout {
     public static final String TAG = "menu";
     private Context mContext;
     private Control mControl;
+    private LinearLayout mRootView;
 
-    public LocalMenuView2(Context context) {
+    public PlayerMenuView(Context context) {
         super(context);
         mContext = context.getApplicationContext();
-        setOrientation(LinearLayout.VERTICAL);
-        setGravity(Gravity.CENTER_VERTICAL);
-        setBackgroundColor(0xa0000000);
+        initView();
+    }
+
+    private void initView() {
+        mRootView = new LinearLayout(mContext);
+        mRootView.setOrientation(LinearLayout.HORIZONTAL);
+        mRootView.setGravity(Gravity.CENTER_HORIZONTAL);
+        mRootView.setBackgroundColor(0xf0000000);
+        addView(mRootView, -1, Utils.getFitSize(mContext, 470));
     }
 
     private void addCheckViewId(int group, int checkeId) {
@@ -93,7 +101,7 @@ public class LocalMenuView2 extends LinearLayout {
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
-        makePerferenceView();
+        makePreferenceView();
         requestFocus();
     }
 
@@ -104,149 +112,77 @@ public class LocalMenuView2 extends LinearLayout {
 
     private View makeCheckableItemView(final String content, final Object obj, final int group) {
         final RadioButton rbt = new RadioButton(mContext);
+        Utils.applyFace(rbt);
         rbt.setSingleLine(true);
         rbt.setEllipsize(TextUtils.TruncateAt.MARQUEE);
         rbt.setMarqueeRepeatLimit(Integer.MAX_VALUE);
         rbt.setBackgroundResource(R.drawable.icon_item_bg_l);
-        rbt.setButtonRightDrawable(getResources().getDrawable(R.drawable.icon_checked_sel));
         rbt.setButtonDrawable(new ColorDrawable(Color.TRANSPARENT));
-        rbt.setGravity(Gravity.CENTER_VERTICAL);
+        rbt.setGravity(Gravity.CENTER);
+        rbt.setTextSize(TypedValue.COMPLEX_UNIT_PX, Utils.getFitSize(mContext, 24));
+        rbt.setTextColor(getResources().getColorStateList(R.color.checked_text));
         rbt.setText(content);
-        rbt.setPadding(0, Utils.getFitSize(mContext, 20), Utils.getFitSize(mContext, 40), Utils.getFitSize(mContext, 20));
+        rbt.setPadding(Utils.getFitSize(mContext, 20), Utils.getFitSize(mContext, 25), Utils.getFitSize(mContext, 20), Utils.getFitSize(mContext, 25));
         if (obj != null) {
             rbt.setTag(obj);
         }
-        rbt.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-            }
-        });
         return rbt;
     }
 
-    class RadioButton extends android.widget.RadioButton {
-
-        private Drawable mButtonDrawable;
-
-        public RadioButton(Context context) {
-            super(context);
-        }
-
-        @Override
-        protected boolean verifyDrawable(Drawable who) {
-            return super.verifyDrawable(who) || who == mButtonDrawable;
-        }
-
-        @Override
-        public void jumpDrawablesToCurrentState() {
-            super.jumpDrawablesToCurrentState();
-            if (mButtonDrawable != null) mButtonDrawable.jumpToCurrentState();
-        }
-
-        public void setButtonRightDrawable(Drawable d) {
-            if (d != null) {
-                if (mButtonDrawable != null) {
-                    mButtonDrawable.setCallback(null);
-                    unscheduleDrawable(mButtonDrawable);
-                }
-                d.setCallback(this);
-                d.setState(getDrawableState());
-                d.setVisible(getVisibility() == VISIBLE, false);
-                mButtonDrawable = d;
-                mButtonDrawable.setState(null);
-                setMinHeight(mButtonDrawable.getIntrinsicHeight());
-            }
-            refreshDrawableState();
-        }
-
-        @Override
-        protected void drawableStateChanged() {
-            super.drawableStateChanged();
-            if (mButtonDrawable != null) {
-                int[] myDrawableState = getDrawableState();
-                mButtonDrawable.setState(myDrawableState);
-                invalidate();
-            }
-        }
-
-        @Override
-        protected void onDraw(Canvas canvas) {
-            super.onDraw(canvas);
-            final Drawable buttonDrawable = mButtonDrawable;
-            if (buttonDrawable != null) {
-                final int verticalGravity = getGravity() & Gravity.VERTICAL_GRAVITY_MASK;
-                final int drawableHeight = buttonDrawable.getIntrinsicHeight();
-                final int drawableWidth = buttonDrawable.getIntrinsicWidth();
-
-                int top = 0;
-                switch (verticalGravity) {
-                    case Gravity.BOTTOM:
-                        top = getHeight() - drawableHeight;
-                        break;
-                    case Gravity.CENTER_VERTICAL:
-                        top = (getHeight() - drawableHeight) / 2;
-                        break;
-                }
-                int bottom = top + drawableHeight;
-                int left = getWidth() - drawableWidth - getPaddingRight();
-                int right = getWidth() - getPaddingRight();
-                buttonDrawable.setBounds(left, top, right, bottom);
-                buttonDrawable.draw(canvas);
-            }
-        }
-
-        @Override
-        public int getCompoundPaddingLeft() {
-            int padding = super.getCompoundPaddingLeft();
-            final Drawable buttonDrawable = mButtonDrawable;
-            if (buttonDrawable != null) {
-                padding += buttonDrawable.getIntrinsicWidth();
-            }
-            return padding;
-        }
-
-        @Override
-        public int getCompoundPaddingRight() {
-            int padding = super.getCompoundPaddingRight();
-            final Drawable buttonDrawable = mButtonDrawable;
-            if (buttonDrawable != null) {
-                padding += buttonDrawable.getIntrinsicWidth();
-            }
-            return padding;
-        }
+    private View makeTextView(String title) {
+        TextView tv = new TextView(mContext);
+        tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, Utils.getFitSize(mContext, 26));
+        tv.setTextColor(0xff00c0ff);
+        tv.setText(title);
+        tv.setGravity(Gravity.CENTER);
+        tv.setPadding(0, Utils.getFitSize(mContext, 25), 0, Utils.getFitSize(mContext, 25));
+        Utils.applyFace(tv);
+        return tv;
     }
 
-
-    private void makePerferenceView() {
-        removeAllViews();
-        View cycelModView = makePerferenceCycleModView();
-        if (cycelModView != null) {
-            addView(cycelModView);
+    private void makePreferenceView() {
+        mRootView.removeAllViews();
+        ArrayList<View> views = new ArrayList<View>();
+        View cycleModView = makePreferenceCycleModView();
+        if (cycleModView != null) {
+            views.add(cycleModView);
         }
-        View decodeView = makePerferenceDecodeView();
+        View decodeView = makePreferenceDecodeView();
         if (decodeView != null) {
-            addView(decodeView);
+            views.add(decodeView);
         }
-        View audioView = makePerferenceAudioView();
+        View audioView = makePreferenceAudioView();
         if (audioView != null) {
-            addView(audioView);
+            views.add(audioView);
         }
-        View audioOutView = makePerferenceAudioOutView();
+        View audioOutView = makePreferenceAudioOutView();
         if (audioOutView != null) {
-            addView(audioOutView);
+            views.add(audioOutView);
         }
-        View subTitleView = makePerferenceSubtitleView();
+        View subTitleView = makePreferenceSubtitleView();
         if (subTitleView != null) {
-            addView(subTitleView);
+            views.add(subTitleView);
+        }
+        if (!views.isEmpty()) {
+            int height = -2;
+            mRootView.addView(makeCutView(), 1, -2);
+            for (int i = 0; i < views.size(); i++) {
+                View v = views.get(i);
+                v.measure(-2, -2);
+                height = Math.max(height, v.getMeasuredHeight());
+                mRootView.addView(v, -2, -2);
+                mRootView.addView(makeCutView(), 1, -2);
+            }
+            mRootView.setLayoutParams(new FrameLayout.LayoutParams(-1, height));
         }
     }
 
 
-    private View makePerferenceCycleModView() {
+    private View makePreferenceCycleModView() {
         if (mControl != null) {
             int cycle = mControl.getCycleMode();
             RadioGroup layout = new RadioGroup(mContext);
-            layout.setOrientation(LinearLayout.HORIZONTAL);
+            layout.setOrientation(LinearLayout.VERTICAL);
             HashMap<Integer, String> m = new HashMap<Integer, String>();
             m.put(IPlayer.NO_CYCLE, LOOPER_OFF);
             m.put(IPlayer.SINGLE_CYCLE, LOOPER_SINGLE);
@@ -276,16 +212,24 @@ public class LocalMenuView2 extends LinearLayout {
                     break;
                 }
             }
+            layout.addView(makeTextView("循环模式"), 0, new LayoutParams(Utils.getFitSize(mContext, 220), -2));
+            layout.addView(makeCutView(), 1, new LayoutParams(Utils.getFitSize(mContext, 220), 1));
             return layout;
         }
         return null;
     }
 
-    private View makePerferenceDecodeView() {
+    private View makeCutView() {
+        View v = new View(mContext);
+        v.setBackgroundColor(Color.GRAY);
+        return v;
+    }
+
+    private View makePreferenceDecodeView() {
         if (mControl != null) {
             int decode = mControl.getDecodeType();
             RadioGroup layout = new RadioGroup(mContext);
-            layout.setOrientation(LinearLayout.HORIZONTAL);
+            layout.setOrientation(LinearLayout.VERTICAL);
             HashMap<Integer, String> m = new HashMap<Integer, String>();
             m.put(IPlayer.HARD_DECODE, "硬解码");
             m.put(IPlayer.SOFT_DECODE, "软解码");
@@ -312,21 +256,23 @@ public class LocalMenuView2 extends LinearLayout {
                     break;
                 }
             }
+            layout.addView(makeTextView("解码设置"), 0, new LayoutParams(Utils.getFitSize(mContext, 220), -2));
+            layout.addView(makeCutView(), 1, new LayoutParams(Utils.getFitSize(mContext, 220), 1));
             return layout;
         }
         return null;
     }
 
-    private View makePerferenceAudioView() {
+    private View makePreferenceAudioView() {
         if (mControl != null) {
             AudioTrack[] tracks = mControl.getAudioTracks();
             if (tracks != null && tracks.length > 0) {
                 int id = mControl.getAudioTrackId();
                 RadioGroup layout = new RadioGroup(mContext);
-                layout.setOrientation(LinearLayout.HORIZONTAL);
-                for (int i = 0; i < tracks.length; i++) {
+                layout.setOrientation(LinearLayout.VERTICAL);
+                for (int i = 0; i < tracks.length && i < 6; i++) {
                     AudioTrack track = tracks[i];
-                    layout.addView(makeCheckableItemView(track.language, track, GROUP_AUDIO), Utils.getFitSize(mContext, 220), -2);
+                    layout.addView(makeCheckableItemView("音频" + track.trackId, track, GROUP_AUDIO), Utils.getFitSize(mContext, 220), -2);
                 }
                 layout.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
                     @Override
@@ -344,6 +290,8 @@ public class LocalMenuView2 extends LinearLayout {
                         break;
                     }
                 }
+                layout.addView(makeTextView("音频设置"), 0, new LayoutParams(Utils.getFitSize(mContext, 220), -2));
+                layout.addView(makeCutView(), 1, new LayoutParams(Utils.getFitSize(mContext, 220), 1));
                 return layout;
             }
         }
@@ -351,12 +299,12 @@ public class LocalMenuView2 extends LinearLayout {
     }
 
 
-    private View makePerferenceAudioOutView() {
+    private View makePreferenceAudioOutView() {
         if (mControl != null) {
             if (mControl.isSPIFFuctionValid()) {
                 boolean spif = mControl.isAudioOutSPIF();
                 RadioGroup layout = new RadioGroup(mContext);
-                layout.setOrientation(LinearLayout.HORIZONTAL);
+                layout.setOrientation(LinearLayout.VERTICAL);
                 HashMap<Boolean, String> m = new HashMap<Boolean, String>();
                 m.put(true, "开启功放");
                 m.put(false, "关闭功放");
@@ -383,20 +331,22 @@ public class LocalMenuView2 extends LinearLayout {
                         break;
                     }
                 }
+                layout.addView(makeTextView("音频输出"), 0, new LayoutParams(Utils.getFitSize(mContext, 220), -2));
+                layout.addView(makeCutView(), 1, new LayoutParams(Utils.getFitSize(mContext, 220), 1));
                 return layout;
             }
         }
         return null;
     }
 
-    private View makePerferenceSubtitleView() {
+    private View makePreferenceSubtitleView() {
         if (mControl != null) {
             SubTrack[] tracks = mControl.getSubTracks();
             if (tracks != null && tracks.length > 0) {
                 SubTrack track = mControl.getSubTrack();
                 RadioGroup layout = new RadioGroup(mContext);
-                layout.setOrientation(LinearLayout.HORIZONTAL);
-                layout.addView(makeCheckableItemView("wu", new SubTrack(SubTrack.SubTrackType.NONE), GROUP_SUBTITLE), Utils.getFitSize(mContext, 220), -2);
+                layout.setOrientation(LinearLayout.VERTICAL);
+                layout.addView(makeCheckableItemView("未设置字幕", new SubTrack(SubTrack.SubTrackType.NONE), GROUP_SUBTITLE), Utils.getFitSize(mContext, 220), -2);
                 for (int i = 0; i < tracks.length; i++) {
                     SubTrack _track = tracks[i];
                     layout.addView(makeCheckableItemView(_track.name + "", _track, GROUP_SUBTITLE), Utils.getFitSize(mContext, 220), -2);
@@ -417,6 +367,8 @@ public class LocalMenuView2 extends LinearLayout {
                         break;
                     }
                 }
+                layout.addView(makeTextView("字幕选择"), 0, new LayoutParams(Utils.getFitSize(mContext, 220), -2));
+                layout.addView(makeCutView(), 1, new LayoutParams(Utils.getFitSize(mContext, 220), 1));
                 return layout;
             }
         }

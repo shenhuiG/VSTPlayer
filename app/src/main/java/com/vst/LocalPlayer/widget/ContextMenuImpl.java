@@ -52,9 +52,12 @@ public class ContextMenuImpl extends MenuBuild {
             root.setOrientation(LinearLayout.HORIZONTAL);
             root.setGravity(Gravity.CENTER);
             ImageView p = new ImageView(mContext);
+            //p.setBackgroundColor(0xffff0000);
+            p.setScaleType(ImageView.ScaleType.FIT_CENTER);
             p.setTag("poster");
-            root.addView(p, Utils.getFitSize(mContext, 400), Utils.getFitSize(mContext, 300));
+            root.addView(p, Utils.getFitSize(mContext, 200), Utils.getFitSize(mContext, 292));
             LinearLayout layout = new LinearLayout(mContext);
+            //layout.setBackgroundColor(0xff00ffff);
             layout.setOrientation(LinearLayout.VERTICAL);
             layout.setGravity(Gravity.CENTER);
             for (int i = 0; i < mMenuItems.size(); i++) {
@@ -101,16 +104,19 @@ public class ContextMenuImpl extends MenuBuild {
                 }
             }
         });
-        layout.setPadding(60, 30, 60, 30);
+        layout.setPadding(Utils.getFitSize(mContext, 40), Utils.getFitSize(mContext, 26), Utils.getFitSize(mContext, 40),
+                Utils.getFitSize(mContext, 26));
         ImageView icon = new ImageView(mContext);
+        icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
         icon.setImageDrawable(menuItem.icon);
-        layout.addView(icon, new LinearLayout.LayoutParams(-2, -2));
+        layout.addView(icon, Utils.getFitSize(mContext, 26), Utils.getFitSize(mContext, 26));
         TextView contentView = new TextView(mContext);
         contentView.setText(menuItem.cs);
         contentView.setGravity(Gravity.CENTER_VERTICAL);
         contentView.setTextColor(Color.WHITE);
-        contentView.setPadding(30, 0, 0, 0);
-        contentView.setTextSize(TypedValue.COMPLEX_UNIT_PX, 25);
+        contentView.setPadding(Utils.getFitSize(mContext, 20), 0, 0, 0);
+        contentView.setTextSize(TypedValue.COMPLEX_UNIT_PX, Utils.getFitSize(mContext, 24));
+        contentView.getPaint().setFakeBoldText(true);
         layout.addView(contentView, new LinearLayout.LayoutParams(0, -2, 1.0F));
         layout.setFocusable(true);
         return layout;

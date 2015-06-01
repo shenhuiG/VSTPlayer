@@ -1,8 +1,10 @@
 package com.vst.LocalPlayer.component.activity;
 
-import android.app.Activity;
+import android.app.ActivityManager;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.database.Cursor;
 import android.graphics.Color;
 import android.net.Uri;
@@ -19,10 +21,16 @@ import android.widget.TextView;
 
 import com.vst.LocalPlayer.MediaStoreNotifier;
 import com.vst.LocalPlayer.R;
+import com.vst.LocalPlayer.UpgradeUtils;
 import com.vst.LocalPlayer.component.provider.MediaStore;
+import com.vst.LocalPlayer.component.service.MyIntentService;
+import com.vst.LocalPlayer.widget.UpgradDialog;
+import com.vst.LocalPlayer.widget.WindowLoadingHelper;
 import com.vst.dev.common.util.Utils;
 
-public class MainScreenActivity extends Activity implements MediaStoreNotifier.CallBack {
+import java.util.List;
+
+public class MainScreenActivity extends BaseActivity implements MediaStoreNotifier.CallBack {
 
     private Context ctx = null;
     private TextView mVideoNumTxtView = null;
@@ -30,43 +38,84 @@ public class MainScreenActivity extends Activity implements MediaStoreNotifier.C
     private int mVideoCount = 0;
     private int mDeviceCount = 0;
     private MediaStoreNotifier notifier;
+    private UpgradDialog mUpdateDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        ctx = getApplication();
-        setContentView(makeAttachUI());
-        updateUI();
+        ctx = this;
+        WindowLoadingHelper.setLaoding(this, checkServiceIsRunning(this, MyIntentService.class.getName()));
+        initView();
         notifier = new MediaStoreNotifier(ctx.getContentResolver(), this);
         notifier.registQueryContentUri(MediaStore.MediaBase.CONTENT_URI, null,
                 MediaStore.MediaBase.FIELD_VALID + "=?", new String[]{"1"}, null);
         notifier.registQueryContentUri(MediaStore.MediaDevice.CONTENT_URI, null,
                 MediaStore.MediaDevice.FIELD_VALID + "=?", new String[]{"1"}, null);
+        registerReceiver(receiver, new IntentFilter(UpgradeUtils.ACTION));
+        MyIntentService.startActionUpgrade(getApplication());
+    }
+
+    private BroadcastReceiver receiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (UpgradeUtils.ACTION.equals(action)) {
+                Bundle b = intent.getExtras();
+                showUpgradeDialog(b);
+            }
+        }
+    };
+
+    private static boolean checkServiceIsRunning(Context mContext, String className) {
+        boolean isRunning = false;
+        ActivityManager activityManager = (ActivityManager)
+                mContext.getSystemService(Context.ACTIVITY_SERVICE);
+        try {
+            List<ActivityManager.RunningServiceInfo> serviceList
+                    = activityManager.getRunningServices(30);
+            if (serviceList != null && serviceList.size() > 0) {
+                for (int i = 0; i < serviceList.size(); i++) {
+                    if (serviceList.get(i).service.getClassName().equals(className) == true) {
+                        isRunning = true;
+                        break;
+                    }
+                }
+            }
+        } catch (Exception e) {
+        }
+        return isRunning;
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        unregisterReceiver(receiver);
         notifier.release();
         notifier = null;
         ctx = null;
     }
 
-    protected View makeAttachUI() {
+    private void showUpgradeDialog(Bundle b) {
+        if (mUpdateDialog == null) {
+            mUpdateDialog = new UpgradDialog(ctx);
+        }
+        mUpdateDialog.setBundler(b);
+        mUpdateDialog.show();
+    }
+
+    private void initView() {
         FrameLayout layout = new FrameLayout(ctx);
         layout.setBackgroundResource(R.drawable.main_bg);
-        layout.setPadding(Utils.getFitSize(ctx, 60),
-                Utils.getFitSize(ctx, 20),
-                Utils.getFitSize(ctx, 60),
-                Utils.getFitSize(ctx, 20));
         TextView titleTxt = new TextView(ctx);
+        titleTxt.setPadding(Utils.getFitSize(ctx, 60),
+                Utils.getFitSize(ctx, 20), 0, 0);
+        Utils.applyFace(titleTxt);
         titleTxt.setText(R.string.vst_player);
         titleTxt.setTextColor(Color.WHITE);
         titleTxt.setTextSize(TypedValue.COMPLEX_UNIT_PX, Utils.getFitSize(ctx, 30));
         layout.addView(titleTxt);
         LinearLayout center = new LinearLayout(ctx);
         center.setOrientation(LinearLayout.HORIZONTAL);
-
         FrameLayout videoView = new FrameLayout(ctx);
         videoView.setFocusable(true);
         videoView.setBackgroundResource(R.drawable.main_focus_bg);
@@ -89,9 +138,10 @@ public class MainScreenActivity extends Activity implements MediaStoreNotifier.C
         mVideoNumTxtView.setTextSize(TypedValue.COMPLEX_UNIT_PX, Utils.getFitSize(ctx, 28));
         mVideoNumTxtView.setGravity(Gravity.CENTER_VERTICAL);
         mVideoNumTxtView.setPadding(Utils.getFitSize(ctx, 32), 0, 0, 0);
+        mVideoNumTxtView.setText(getString(R.string.videoFomart, mVideoCount));
+        Utils.applyFace(mVideoNumTxtView);
         videoView.addView(mVideoNumTxtView, new FrameLayout.LayoutParams(-1, Utils.getFitSize(ctx, 108), Gravity.BOTTOM));
         center.addView(videoView, new LinearLayout.LayoutParams(-2, -2));
-
         FrameLayout deviceView = new FrameLayout(ctx);
         deviceView.setFocusable(true);
         deviceView.setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
@@ -112,15 +162,17 @@ public class MainScreenActivity extends Activity implements MediaStoreNotifier.C
         deviceBg.setScaleType(ScaleType.FIT_CENTER);
         deviceView.addView(deviceBg, Utils.getFitSize(ctx, 240), Utils.getFitSize(ctx, 308));
         mDeviceNumTxtView = new TextView(ctx);
+        Utils.applyFace(mDeviceNumTxtView);
         mDeviceNumTxtView.setGravity(Gravity.CENTER_VERTICAL);
         mDeviceNumTxtView.setTextSize(TypedValue.COMPLEX_UNIT_PX, Utils.getFitSize(ctx, 28));
         mDeviceNumTxtView.setPadding(Utils.getFitSize(ctx, 32), 0, 0, 0);
+        mDeviceNumTxtView.setText(getString(R.string.deviceFomart, mDeviceCount));
         deviceView.addView(mDeviceNumTxtView, new FrameLayout.LayoutParams(-1, Utils.getFitSize(ctx, 108), Gravity.BOTTOM));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2);
         lp.leftMargin = Utils.getFitSize(ctx, 30);
         center.addView(deviceView, lp);
         layout.addView(center, new FrameLayout.LayoutParams(-2, -2, Gravity.CENTER));
-        return layout;
+        setContentView(layout);
     }
 
     private void updateUI() {

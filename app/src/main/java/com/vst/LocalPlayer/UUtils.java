@@ -12,6 +12,12 @@ import android.util.Log;
 
 import com.vst.LocalPlayer.component.activity.PlayerActivity;
 import com.vst.LocalPlayer.model.FileCategory;
+import com.vst.LocalPlayer.model.MediaInfo;
+import net.sourceforge.pinyin4j.PinyinHelper;
+import net.sourceforge.pinyin4j.format.HanyuPinyinCaseType;
+import net.sourceforge.pinyin4j.format.HanyuPinyinOutputFormat;
+import net.sourceforge.pinyin4j.format.HanyuPinyinToneType;
+import net.sourceforge.pinyin4j.format.exception.BadHanyuPinyinOutputFormatCombination;
 
 import java.io.*;
 import java.util.*;
@@ -19,40 +25,80 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 
-public class Utils {
+public class UUtils {
 
     private static final String TAG = "Utils";
 
-//    public static void getDeviceName(Context ctx) {
-//        System.out.println("CCCCCCCCCCCCCCCCCCCCCCC");
-////        UsbManager manager = (UsbManager) ctx.getSystemService(Context.USB_SERVICE);
-////        HashMap<String, UsbDevice> deviceList = manager.getDeviceList();
-////        Iterator<UsbDevice> deviceIterator = deviceList.values().iterator();
-////        String strDeviceNameList = "";
-////        while (deviceIterator.hasNext()) {
-////            UsbDevice device = deviceIterator.next();
-////            System.out.println("Name: " + device.getDeviceName() + "\n"
-////                    + "VID: " + device.getVendorId()
-////                    + "       PID: " + device.getProductId());
-////        }
-//
-//        try {
-//            //获得外接USB输入设备的信息
-//            Process p = Runtime.getRuntime().exec("cat /proc/bus/input/devices");
-//            BufferedReader in = new BufferedReader(new InputStreamReader(p.getInputStream()));
-//            String line = null;
-//            while ((line = in.readLine()) != null) {
-//                String deviceInfo = line.trim();
-//                //对获取的每行的设备信息进行过滤，获得自己想要的。
-//                System.out.println(deviceInfo);
-//            }
-//
-//        } catch (Exception e) {
-//            // TODO: handle exception
-//            e.printStackTrace();
-//        }
-//    }
 
+    /**
+     * 汉字转换位汉语拼音首字母，英文字符不变
+     *
+     * @param chines 汉字
+     * @return 拼音
+     */
+    public static String converterToFirstSpell(String chines) {
+        System.out.println(chines);
+        String pinyinName = "";
+        char[] nameChar = chines.toCharArray();
+        HanyuPinyinOutputFormat defaultFormat = new HanyuPinyinOutputFormat();
+        defaultFormat.setCaseType(HanyuPinyinCaseType.LOWERCASE);
+        defaultFormat.setToneType(HanyuPinyinToneType.WITHOUT_TONE);
+        for (int i = 0; i < nameChar.length; i++) {
+            if (nameChar[i] > 128) {
+                try {
+                    String[] s = PinyinHelper.toHanyuPinyinStringArray(nameChar[i], defaultFormat);
+                    if (s != null && s.length > 0) {
+                        pinyinName += s[0].charAt(0);
+                    }
+                } catch (BadHanyuPinyinOutputFormatCombination e) {
+                    e.printStackTrace();
+                }
+            } else {
+                pinyinName += nameChar[i];
+            }
+        }
+        return pinyinName;
+    }
+
+    /**
+     * 汉字转换位汉语拼音，英文字符不变
+     *
+     * @param chines 汉字
+     * @return 拼音
+     */
+    public static String converterToSpell(String chines) {
+        String pinyinName = "";
+        char[] nameChar = chines.toCharArray();
+        HanyuPinyinOutputFormat defaultFormat = new HanyuPinyinOutputFormat();
+        defaultFormat.setCaseType(HanyuPinyinCaseType.LOWERCASE);
+        defaultFormat.setToneType(HanyuPinyinToneType.WITHOUT_TONE);
+        for (int i = 0; i < nameChar.length; i++) {
+            if (nameChar[i] > 128) {
+                try {
+                    pinyinName += PinyinHelper.toHanyuPinyinStringArray(nameChar[i], defaultFormat)[0];
+                } catch (BadHanyuPinyinOutputFormatCombination e) {
+                    e.printStackTrace();
+                }
+            } else {
+                pinyinName += nameChar[i];
+            }
+        }
+        return pinyinName;
+    }
+
+    public static String smartAAMediaName(String fileName) {
+        String reg = "(?i)HD-TVB.COM|(?i)3D|(?i)720P|(?i)1080P|(?i)X264|(?i)DTS|(?i)BLURAY|(?i)HSBS|(?i)CHD|(?i)H-SBS|" +
+                "(?i)HD|(?i)AVC|(?i)MA|5.1|(?i)AC3|(?i)AAC|265|(?i)HDTV|(?i)DL|(?i)DHD|(?i)HD" +
+                "|(?i)HEVC|(?i)DICH|(?i)HDTV|(?i)www.dy2018.com|飘花电影]|//[|//]";
+        String result = fileName;
+        //reduce ext
+        //result = fileName.substring(0, fileName.lastIndexOf("."));
+        //reduce other word like 720P,DTS,X264..
+        result = result.replaceAll(reg, "");
+        result = result.replaceAll("//.", " ");
+        //reduce last .
+        return result;
+    }
 
     /**
      * 截取720P 标记之前，后面的全部丢掉
@@ -104,19 +150,15 @@ public class Utils {
         return null;
     }
 
-    public static void playMediaFile(Context ctx, Uri uri, long id, long deviceId, String devicePath) {
+    public static void playMediaFile(Context ctx, Uri uri, MediaInfo mediaInfo) {
         Intent intent = new Intent(Intent.ACTION_VIEW);
         intent.setDataAndType(uri, "video/*");
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         intent.setPackage(ctx.getPackageName());
         intent.setClass(ctx, PlayerActivity.class);
-        if (id >= 0) {
-            Bundle args = new Bundle();
-            args.putLong("_id", id);
-            args.putLong("deviceId", deviceId);
-            args.putString("devicePath", devicePath);
-            intent.putExtras(args);
-        }
+        Bundle args = new Bundle();
+        args.putSerializable("mediainfo", mediaInfo);
+        intent.putExtras(args);
         ctx.startActivity(intent);
     }
 
@@ -173,7 +215,6 @@ public class Utils {
                     || "vob".equalsIgnoreCase(ext) || "webm".equalsIgnoreCase(ext) || "wmv".equalsIgnoreCase(ext)
                     || "arm".equalsIgnoreCase(ext) || "ra".equalsIgnoreCase(ext)
                     || "wac".equalsIgnoreCase(ext)
-                    || "m2ts".equalsIgnoreCase(ext)
                     ) {
                 return FileCategory.Video;
             }

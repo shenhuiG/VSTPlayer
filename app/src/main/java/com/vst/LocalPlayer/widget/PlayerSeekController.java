@@ -3,10 +3,9 @@ package com.vst.LocalPlayer.widget;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Color;
-import android.graphics.drawable.Drawable;
-import android.graphics.drawable.PaintDrawable;
 import android.os.Handler;
 import android.os.Message;
+import android.text.TextUtils;
 import android.text.style.ImageSpan;
 import android.util.Log;
 import android.util.TypedValue;
@@ -31,7 +30,7 @@ import net.myvst.v2.extra.media.controller.SeekView;
 import net.myvst.v2.extra.media.controller.SeekView.OnSeekChangedListener;
 import net.myvst.v2.extra.media.controller.TextDrawable;
 
-public class LocalSeekController extends FrameLayout implements IInverseControl {
+public class PlayerSeekController extends FrameLayout implements IInverseControl {
 
     public interface ControlCallback {
 
@@ -64,7 +63,7 @@ public class LocalSeekController extends FrameLayout implements IInverseControl 
     private TextView mTxtDuration;
     private FrameLayout mStateView;
     private String mControlId;
-    private MediaInfo mMediaMeta;
+    private MediaInfo mMediaInfo;
     public static final String SEEK_CONTROLLER = "seek";
     private ControlCallback mControl;
     private Context mContext;
@@ -86,24 +85,25 @@ public class LocalSeekController extends FrameLayout implements IInverseControl 
         }
     };
 
-    public LocalSeekController(Context context) {
+    public PlayerSeekController(Context context) {
         super(context);
         mContext = context.getApplicationContext();
         initView();
     }
 
     public void setMediaMeta(MediaInfo mediaMeta) {
-        mMediaMeta = mediaMeta;
+        mMediaInfo = mediaMeta;
         if (mTitleView != null) {
-            if (mMediaMeta != null) {
-                mTitleView.setText(mMediaMeta.name);
+            if (mMediaInfo != null) {
+                String text = mMediaInfo.title != null ? mMediaInfo.title : mMediaInfo.name;
+                mTitleView.setText(text.replace("-", "- "));
             } else {
                 mTitleView.setText(null);
             }
         }
         if (mExtView != null) {
-            if (mMediaMeta != null) {
-                String ext = mMediaMeta.name.substring(mMediaMeta.name.lastIndexOf(".") + 1);
+            if (mMediaInfo != null) {
+                String ext = mMediaInfo.name.substring(mMediaInfo.name.lastIndexOf(".") + 1);
                 mExtView.setText(ext.toUpperCase());
             } else {
                 mExtView.setText(null);
@@ -122,7 +122,15 @@ public class LocalSeekController extends FrameLayout implements IInverseControl 
             if (size[0] * size[1] == 0) {
                 m720pView.setText(null);
             } else {
-                m720pView.setText("720P");
+                if (size[0] < 1080 * 0.9) {
+                    m720pView.setText("标清");
+                }
+                if (size[0] > 1080 * 0.9) {
+                    m720pView.setText("720P");
+                }
+                if (size[0] > 1280 * 0.9) {
+                    m720pView.setText("1080P");
+                }
             }
         }
     }
@@ -157,20 +165,37 @@ public class LocalSeekController extends FrameLayout implements IInverseControl 
         layout.setPadding(Utils.getFitSize(mContext, 60), Utils.getFitSize(mContext, 25),
                 Utils.getFitSize(mContext, 60), 0);
         mTitleView = new TextView(mContext);
+        mTitleView.setSingleLine(true);
+        mTitleView.setEllipsize(TextUtils.TruncateAt.MARQUEE);
+        mTitleView.setMarqueeRepeatLimit(Integer.MAX_VALUE);
+        Utils.applyFace(mTitleView);
         mTitleView.setTextSize(TypedValue.COMPLEX_UNIT_PX, Utils.getFitSize(mContext, 30));
         layout.addView(mTitleView, new LinearLayout.LayoutParams(0, -2, 1.0f));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, Utils.getFitSize(mContext, 36));
+        lp.rightMargin = Utils.getFitSize(mContext, 6);
+        FrameLayout fl = new FrameLayout(mContext);
+        fl.setPadding(Utils.getFitSize(mContext, 16), 0, Utils.getFitSize(mContext, 16), 0);
+        fl.setBackgroundResource(R.drawable.bg_format);
         mCycelModView = new ImageView(mContext);
-        mCycelModView.setBackgroundResource(R.drawable.bg_format);
+        mCycelModView.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        //mCycelModView.setBackgroundColor(0xff00ffff);
         mCycelModView.setImageResource(R.drawable.ic_loop_all);
-        layout.addView(mCycelModView, new LinearLayout.LayoutParams(-2, -2));
+        fl.addView(mCycelModView, new FrameLayout.LayoutParams(39, 31, Gravity.CENTER));
+        layout.addView(fl, lp);
         m720pView = new TextView(mContext);
+        m720pView.setGravity(Gravity.CENTER);
+        Utils.applyFace(m720pView);
+        m720pView.setPadding(Utils.getFitSize(mContext, 6), 0, Utils.getFitSize(mContext, 6), 0);
         m720pView.setBackgroundResource(R.drawable.bg_format);
         m720pView.setText("720p");
-        layout.addView(m720pView, new LinearLayout.LayoutParams(-2, -2));
+        layout.addView(m720pView, lp);
         mExtView = new TextView(mContext);
+        mExtView.setPadding(Utils.getFitSize(mContext, 6), 0, Utils.getFitSize(mContext, 6), 0);
         mExtView.setBackgroundResource(R.drawable.bg_format);
+        mExtView.setGravity(Gravity.CENTER);
+        Utils.applyFace(mExtView);
         mExtView.setText("MKV");
-        layout.addView(mExtView, new LinearLayout.LayoutParams(-2, -2));
+        layout.addView(mExtView, lp);
         return layout;
     }
 
@@ -196,14 +221,6 @@ public class LocalSeekController extends FrameLayout implements IInverseControl 
         mStateView = new FrameLayout(mContext);
         addView(mStateView, new LayoutParams(-1, -1, Gravity.CENTER));
         initControllerView(this);
-    }
-
-    private Drawable makeTxtQualityBackGround() {
-        PaintDrawable drawable = new PaintDrawable(0xA0FFFFFF);
-        drawable.setPadding(Utils.getFitSize(mContext, 6), Utils.getFitSize(mContext, 2),
-                Utils.getFitSize(mContext, 6), Utils.getFitSize(mContext, 2));
-        drawable.setCornerRadius(Utils.getFitSize(mContext, 4));
-        return drawable;
     }
 
     private void initControllerView(View v) {
@@ -293,7 +310,7 @@ public class LocalSeekController extends FrameLayout implements IInverseControl 
         if (mControl != null && !mDragging) {
             long position = mControl.getPosition();
             long duration = mControl.getDuration();
-            Log.d(LocalSeekController.class.getSimpleName(), "position=" + position + ",duration=" + duration);
+            Log.d(PlayerSeekController.class.getSimpleName(), "position=" + position + ",duration=" + duration);
             if (mSeekView != null) {
                 mSeekView.setMax((int) duration);
                 mSeekView.setProgress((int) position);

@@ -1,7 +1,9 @@
 package com.vst.LocalPlayer.model;
 
 
-public class MediaInfo {
+import java.io.Serializable;
+
+public class MediaInfo implements Serializable {
     public long id = -1;
     public String name;
     public String title;
@@ -21,6 +23,16 @@ public class MediaInfo {
         this.poster = poster;
         this.id = id;
         this.deviceId = deviceId;
+    }
+
+
+    @Override
+    public boolean equals(Object o) {
+        if (o instanceof MediaInfo) {
+            MediaInfo m = (MediaInfo) o;
+            return m.id == id && m.name.equals(name) && m.path.equals(path);
+        }
+        return super.equals(o);
     }
 
     @Override

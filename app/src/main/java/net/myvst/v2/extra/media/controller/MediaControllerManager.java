@@ -19,25 +19,25 @@ import java.util.Iterator;
 
 public class MediaControllerManager extends FrameLayout {
     private String TAG = "MediaControllerManager";
-    
+
     public interface KeyEventHandler {
         boolean handlerKeyEvent(KeyEvent event);
     }
 
-    private  class ControllHandler {
+    private class ControllHandler {
         public View mControlView;
         public ViewGroup.LayoutParams mViewLayoutParams;
         public WindowManager.LayoutParams mWindowLayoutParams;
         public String mControlTag;
 
         public ControllHandler(String controlTag, View controlView,
-                android.view.ViewGroup.LayoutParams viewLayoutParams,
-                android.view.WindowManager.LayoutParams windowLayoutParams) {
+                               android.view.ViewGroup.LayoutParams viewLayoutParams,
+                               android.view.WindowManager.LayoutParams windowLayoutParams) {
             super();
             mControlTag = controlTag;
             mControlView = controlView;
             if (viewLayoutParams == null) {
-                viewLayoutParams = new ViewGroup.LayoutParams(-1, -1);
+                viewLayoutParams = new ViewGroup.LayoutParams(-1, -2);
             }
             if (windowLayoutParams == null) {
                 windowLayoutParams = createDefaultLayoutParams();
@@ -102,7 +102,7 @@ public class MediaControllerManager extends FrameLayout {
     }
 
     public void addController(String controllerId, View contentView, ViewGroup.LayoutParams viewParams,
-            WindowManager.LayoutParams windowParams) {
+                              WindowManager.LayoutParams windowParams) {
         ControllHandler controllHandler = new ControllHandler(controllerId, contentView, viewParams, windowParams);
         mControllHandlerMap.put(controllerId, controllHandler);
         if (contentView instanceof IInverseControl) {
@@ -220,7 +220,7 @@ public class MediaControllerManager extends FrameLayout {
     }
 
     public void hide(String controlId) {
-        Log.i(TAG, "hideControl ="+controlId);
+        Log.i(TAG, "hideControl =" + controlId);
         if (mShowing && controlId != null && controlId.equals(mControllerId)) {
             try {
                 if (getParent() != null) {

@@ -11,13 +11,12 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.view.*;
-import android.widget.PopupWindow;
-import android.widget.TextView;
+import android.widget.*;
+import com.vst.LocalPlayer.R;
 import com.vst.LocalPlayer.model.FileCategory;
-import com.vst.LocalPlayer.widget.LocalMenuView;
-import com.vst.LocalPlayer.widget.LocalMenuView2;
-import com.vst.LocalPlayer.widget.LocalSeekController;
-import com.vst.LocalPlayer.Utils;
+import com.vst.LocalPlayer.widget.PlayerMenuView;
+import com.vst.LocalPlayer.widget.PlayerSeekController;
+import com.vst.LocalPlayer.UUtils;
 import com.vst.LocalPlayer.component.provider.MediaStore;
 import com.vst.LocalPlayer.model.MediaInfo;
 import com.vst.dev.common.media.AudioTrack;
@@ -35,7 +34,7 @@ import java.util.Random;
 
 public class PlayFragment extends MediaControlFragment implements IPlayer.OnCompletionListener,
         IPlayer.OnErrorListener, IPlayer.OnPreparedListener, MediaControllerManager.KeyEventHandler,
-        IPlayer.OnInfoListener, LocalSeekController.ControlCallback, IPlayer.OnTimedTextChangedListener, LocalMenuView2.Control {
+        IPlayer.OnInfoListener, PlayerSeekController.ControlCallback, IPlayer.OnTimedTextChangedListener, PlayerMenuView.Control {
     private static final int HANDLE_ERROR = 0x0002;
     private static final int FINAL_PLAY = 0x0001;
     private Context mContext = null;
@@ -43,11 +42,11 @@ public class PlayFragment extends MediaControlFragment implements IPlayer.OnComp
     private int mScaleSize = IPlayer.SURFACE_BEST_FIT;
     private int mDecodeType = IPlayer.HARD_DECODE;
     private Uri mMediaUri = null;
-    private long mediaId = -1;
-    private long deviceId = -1;
-    private String devicePath = null;
+    private MediaInfo mMediaInfo;
+    private ArrayList<MediaInfo> mAllArray = null;
+    private int cycleIndex = -1;
     private Handler mHandler;
-    private LocalSeekController mSeekController;
+    private PlayerSeekController mSeekController;
     private int mCycleMode = IPlayer.NO_CYCLE;
 
     @Override
@@ -175,15 +174,10 @@ public class PlayFragment extends MediaControlFragment implements IPlayer.OnComp
         if (args != null) {
             Uri mediaUri = args.getParcelable("uri");
             if (mediaUri != null && !mediaUri.equals(mMediaUri)) {
-                mediaId = args.getLong("_id", -1);
-                deviceId = args.getLong("deviceId", -1);
-                devicePath = args.getString("devicePath");
-                mSeekWhenPrepared = getPositionFromRecord(mediaId);
+                mMediaInfo = (MediaInfo) args.getSerializable("mediainfo");
+                mSeekWhenPrepared = getPositionFromRecord(mMediaInfo.id);
                 mPlayer.resetVideo();
-                String scheme = mediaUri.getScheme();
-                // (scheme.equalsIgnoreCase("file")) {
                 mHandler.sendMessage(mHandler.obtainMessage(FINAL_PLAY, mediaUri));
-                //}
             }
             return true;
         }
@@ -193,7 +187,6 @@ public class PlayFragment extends MediaControlFragment implements IPlayer.OnComp
 
     private int getPositionFromRecord(long mediaID) {
         if (mediaID >= 0) {
-            System.out.println(mediaID);
             Cursor c = mContext.getContentResolver().query(MediaStore.MediaRecord.CONTENT_URI, null,
                     MediaStore.MediaRecord.FIELD_MEDIA_ID + "=?", new String[]{mediaID + ""}, null);
             if (c.getCount() > 0) {
@@ -211,23 +204,6 @@ public class PlayFragment extends MediaControlFragment implements IPlayer.OnComp
         }
         return new int[]{0, 0};
     }
-
-    private MediaInfo queryMediaBase(long mediaId, String mediaPath) {
-        MediaInfo model = new MediaInfo();
-        if (mediaId < 0) {
-            model.path = mediaPath;
-            model.name = mediaPath.substring(mediaPath.lastIndexOf("/") + 1);
-        } else {
-            Cursor c = mContext.getContentResolver().query(MediaStore.getContentUri(
-                    MediaStore.MediaBase.TABLE_NAME, mediaId), null, null, null, null);
-            if (c.moveToFirst()) {
-                model.name = c.getString(c.getColumnIndex(MediaStore.MediaBase.FIELD_NAME));
-            }
-            c.close();
-        }
-        return model;
-    }
-
 
     @Override
     public void onAttach(Activity activity) {
@@ -256,7 +232,7 @@ public class PlayFragment extends MediaControlFragment implements IPlayer.OnComp
         if (p < 0) {
             p = 0;
         }
-        insertRecord(mediaId, p, d);
+        insertRecord(mMediaInfo.id, p, d);
         super.onPause();
     }
 
@@ -285,12 +261,16 @@ public class PlayFragment extends MediaControlFragment implements IPlayer.OnComp
     private void initController() {
         if (mControllerManager != null) {
             mControllerManager.reset();
-            mSeekController = new LocalSeekController(mContext);
+            mSeekController = new PlayerSeekController(mContext);
             mSeekController.setControl(this);
-            mControllerManager.addController(LocalSeekController.SEEK_CONTROLLER, mSeekController, null, null);
-            LocalMenuView2 menuView = new LocalMenuView2(mContext);
+            mControllerManager.addController(PlayerSeekController.SEEK_CONTROLLER, mSeekController, null, null);
+            PlayerMenuView menuView = new PlayerMenuView(mContext);
             menuView.setControl(this);
-            mControllerManager.addController(LocalMenuView.TAG, menuView, null, null);
+            WindowManager.LayoutParams wlp = MediaControllerManager.createDefaultLayoutParams();
+            wlp.height = com.vst.dev.common.util.Utils.getFitSize(mContext, 450);
+            wlp.height = WindowManager.LayoutParams.WRAP_CONTENT;
+            wlp.gravity = Gravity.TOP;
+            mControllerManager.addController(PlayerMenuView.TAG, menuView, null, wlp);
         }
     }
 
@@ -322,10 +302,8 @@ public class PlayFragment extends MediaControlFragment implements IPlayer.OnComp
                 case FINAL_PLAY:
                     Uri uri = (Uri) msg.obj;
                     mMediaUri = uri;
-                    System.out.println(uri);
-                    //mMediaPath = "bluray:///storage/external_storage/sdb1/3D-BD/Taken.2.2012.2in1.BluRay.1080p.AVC.DTS-HD.MA5.1-CHDBits";
                     if (mSeekController != null) {
-                        mSeekController.setMediaMeta(queryMediaBase(mediaId, uri.getPath()));
+                        mSeekController.setMediaMeta(mMediaInfo);
                     }
                     if (mPlayer != null && uri != null) {
                         mPlayer.setDecodeType(mDecodeType);
@@ -338,11 +316,27 @@ public class PlayFragment extends MediaControlFragment implements IPlayer.OnComp
                     }
                     break;
                 case HANDLE_ERROR:
+                    showErrorToast();
+                    getActivity().finish();
                     break;
                 default:
             }
         }
     };
+
+    private void showErrorToast() {
+        Toast t = new Toast(mContext);
+        LinearLayout root = new LinearLayout(mContext);
+        ImageView i = new ImageView(mContext);
+        i.setImageResource(R.drawable.ic_play_error_toast);
+        i.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        root.addView(i, com.vst.dev.common.util.Utils.getFitSize(mContext, 181), com.vst.dev.common.util.Utils.getFitSize(mContext, 101));
+        t.setView(root);
+        t.setGravity(Gravity.CENTER, 0, 0);
+        t.setDuration(Toast.LENGTH_SHORT);
+        t.show();
+    }
+
 
     @Override
     public long getDuration() {
@@ -393,7 +387,6 @@ public class PlayFragment extends MediaControlFragment implements IPlayer.OnComp
 
     @Override
     public void onCompletion(IPlayer mp) {
-        System.out.println("onCompletion ???>" + mCycleMode);
         switch (mCycleMode) {
             case IPlayer.NO_CYCLE:
                 if (getActivity() != null) {
@@ -408,7 +401,7 @@ public class PlayFragment extends MediaControlFragment implements IPlayer.OnComp
             case IPlayer.RANDOM_CYCLE:
                 //get all video
                 if (mAllArray == null) {
-                    mAllArray = getAllVideoList(deviceId, devicePath);
+                    mAllArray = getAllVideoList(mMediaInfo.deviceId, mMediaInfo.devicePath);
                     if (mAllArray == null) {
                         if (getActivity() != null) {
                             getActivity().finish();
@@ -423,10 +416,10 @@ public class PlayFragment extends MediaControlFragment implements IPlayer.OnComp
                     cycleIndex = rand.nextInt(size);
                 } else {
                     if (cycleIndex == -1) {
-                        if (mediaId >= 0) {
+                        if (mMediaInfo.id >= 0) {
                             for (int i = 0; i < size; i++) {
                                 MediaInfo media = mAllArray.get(i);
-                                if (media.id == mediaId) {
+                                if (media.id == mMediaInfo.id) {
                                     cycleIndex = i;
                                     break;
                                 }
@@ -435,9 +428,8 @@ public class PlayFragment extends MediaControlFragment implements IPlayer.OnComp
                     }
                     cycleIndex = (cycleIndex + 1) % size;
                 }
-                MediaInfo media = mAllArray.get(cycleIndex);
-                mediaId = media.id;
-                Uri uri = Utils.getMediaUri(media.path);
+                mMediaInfo = mAllArray.get(cycleIndex);
+                Uri uri = UUtils.getMediaUri(mMediaInfo.path);
                 if (uri != null) {
                     mPlayer.resetVideo();
                     mHandler.sendMessage(mHandler.obtainMessage(FINAL_PLAY, uri));
@@ -451,9 +443,26 @@ public class PlayFragment extends MediaControlFragment implements IPlayer.OnComp
                     int index = list.indexOf(mMediaUri.getPath());
                     index = (index + 1) % list.size();
                     String path = list.get(index);
-                    mediaId = -1;
-                    uri = Utils.getMediaUri(path);
-                    if (uri != null) {
+                    //~~~~~~~~~~~~
+                    uri = UUtils.getMediaUri(path);
+                    String relativePath = path.replace(mMediaInfo.devicePath, "");
+                    Cursor cursor = mContext.getContentResolver().query(MediaStore.MediaBase.CONTENT_URI, null,
+                            MediaStore.MediaBase.FIELD_RELATIVE_PATH + "=?", new String[]{relativePath}, null);
+                    MediaInfo mediaInfo;
+                    if (cursor.moveToFirst()) {
+                        String name = cursor.getString(cursor.getColumnIndex(MediaStore.MediaBase.FIELD_NAME));
+                        String title = cursor.getString(cursor.getColumnIndex(MediaStore.MediaInfo.FIELD_TITLE));
+                        String poster = cursor.getString(cursor.getColumnIndex(MediaStore.MediaInfo.FIELD_POSTER));
+                        long mediaId = cursor.getLong(cursor.getColumnIndex("_id"));
+                        mediaInfo = new MediaInfo(mediaId, path, name, title, poster, mMediaInfo.deviceId, mMediaInfo.path);
+                    } else {
+                        String name = new File(path).getName();
+                        mediaInfo = new MediaInfo(-1, path, name, null, null, mMediaInfo.deviceId, mMediaInfo.path);
+                    }
+                    cursor.close();
+                    if (mediaInfo != null) {
+                        mMediaInfo = mediaInfo;
+                        uri = UUtils.getMediaUri(path);
                         mPlayer.resetVideo();
                         mHandler.sendMessage(mHandler.obtainMessage(FINAL_PLAY, uri));
                     }
@@ -462,9 +471,6 @@ public class PlayFragment extends MediaControlFragment implements IPlayer.OnComp
 
         }
     }
-
-    private ArrayList<MediaInfo> mAllArray = null;
-    private int cycleIndex = -1;
 
     private ArrayList<MediaInfo> getAllVideoList(long deviceId, String devicePath) {
         ArrayList<MediaInfo> array = null;
@@ -493,7 +499,7 @@ public class PlayFragment extends MediaControlFragment implements IPlayer.OnComp
         File[] files = dir.listFiles(new FileFilter() {
             @Override
             public boolean accept(File file) {
-                FileCategory fileCategory = Utils.getFileCategory(file);
+                FileCategory fileCategory = UUtils.getFileCategory(file);
                 return fileCategory == FileCategory.BDMV || fileCategory == FileCategory.Video;
             }
         });
@@ -528,7 +534,7 @@ public class PlayFragment extends MediaControlFragment implements IPlayer.OnComp
             if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT
                     || keyCode == KeyEvent.KEYCODE_DPAD_UP) {
                 System.out.println("mControllerManager" + mControllerManager);
-                mControllerManager.show(LocalSeekController.SEEK_CONTROLLER);
+                mControllerManager.show(PlayerSeekController.SEEK_CONTROLLER);
                 return true;
             } else if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
                 if (isPlaying()) {
@@ -542,7 +548,7 @@ public class PlayFragment extends MediaControlFragment implements IPlayer.OnComp
                 }
                 return true;
             } else if (keyCode == KeyEvent.KEYCODE_MENU) {
-                mControllerManager.show(LocalMenuView.TAG);
+                mControllerManager.show(PlayerMenuView.TAG);
                 return true;
             }
         }
@@ -638,8 +644,10 @@ public class PlayFragment extends MediaControlFragment implements IPlayer.OnComp
                     mSubTitlesLocation.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
                     mSubTitlesLocation.y = com.vst.dev.common.util.Utils.getFitSize(mContext, 30);
                 }
-                mSubTitleWindow.showAtLocation((View) mPlayer, mSubTitlesLocation.gravity, 0,
-                        mSubTitlesLocation.y);
+                if (!isDetached()) {
+                    mSubTitleWindow.showAtLocation((View) mPlayer, mSubTitlesLocation.gravity, 0,
+                            mSubTitlesLocation.y);
+                }
             }
         } else {
             if (mSubTitleWindow != null && mSubTitleWindow.isShowing()) {

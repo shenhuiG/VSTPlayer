@@ -15,23 +15,27 @@ repositories {
 android {
     compileSdkVersion 18
     buildToolsVersion '20.0.0'
-
     defaultConfig {
         applicationId "com.vst.LocalPlayer"
         minSdkVersion 15
         targetSdkVersion 16
-        versionCode 1
-        versionName "1.0"
+        versionCode 1000
+        versionName '1.0.0.0'
     }
-
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_6
         targetCompatibility JavaVersion.VERSION_1_6
     }
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ['jniLibs']
+            res.srcDirs = ['src/main/res']
         }
     }
 }

@@ -5,7 +5,7 @@ import android.content.ContentValues;
 import android.database.Cursor;
 import android.net.Uri;
 
-import com.vst.LocalPlayer.Utils;
+import com.vst.LocalPlayer.UUtils;
 
 import org.json.JSONObject;
 
@@ -70,7 +70,7 @@ public class MediaStoreHelper {
         ContentValues values = new ContentValues();
         values.put(MediaStore.MediaDevice.FIELD_DEVICE_UUID, uuid);
         values.put(MediaStore.MediaDevice.FIELD_DEVICE_PATH, path);
-        values.put(MediaStore.MediaDevice.FIELD_LAST_MODIFY_TIME, Utils.getDeviceLaseTime(path));
+        values.put(MediaStore.MediaDevice.FIELD_LAST_MODIFY_TIME, UUtils.getDeviceLaseTime(path));
         values.put(MediaStore.MediaDevice.FIELD_VALID, 1);
         Uri uri = cr.insert(MediaStore.MediaDevice.CONTENT_URI, values);
         return uri;
@@ -135,7 +135,7 @@ public class MediaStoreHelper {
     }
 
     public static boolean checkDeviceValid(String path, String uuid) {
-        String deviceUUID = Utils.readDeviceUUID(path);
+        String deviceUUID = UUtils.readDeviceUUID(path);
         return uuid.equals(deviceUUID);
     }
 

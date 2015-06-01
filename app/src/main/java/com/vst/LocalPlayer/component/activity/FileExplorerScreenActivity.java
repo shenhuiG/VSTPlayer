@@ -1,6 +1,5 @@
 package com.vst.LocalPlayer.component.activity;
 
-import android.app.Activity;
 import android.content.ContentUris;
 import android.content.Context;
 import android.content.Intent;
@@ -17,19 +16,23 @@ import android.widget.*;
 
 import com.vst.LocalPlayer.MediaStoreNotifier;
 import com.vst.LocalPlayer.R;
-import com.vst.LocalPlayer.Utils;
+import com.vst.LocalPlayer.UUtils;
 import com.vst.LocalPlayer.component.provider.MediaStore;
 import com.vst.LocalPlayer.component.provider.MediaStoreHelper;
 import com.vst.LocalPlayer.component.service.MyIntentService;
 import com.vst.LocalPlayer.model.DeviceInfo;
 import com.vst.LocalPlayer.model.FileCategory;
+import com.vst.LocalPlayer.model.MediaInfo;
+import com.vst.dev.common.util.Utils;
 
 import java.io.File;
 import java.io.FilenameFilter;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
-public class FileExplorerScreenActivity extends Activity implements MediaStoreNotifier.CallBack, AdapterView.OnItemClickListener,
+public class FileExplorerScreenActivity extends BaseActivity implements MediaStoreNotifier.CallBack, AdapterView.OnItemClickListener,
         AdapterView.OnItemLongClickListener {
 
     public static final String PARAMS_DEVICE = "deviceId";
@@ -42,7 +45,7 @@ public class FileExplorerScreenActivity extends Activity implements MediaStoreNo
     private String mExplorerRootPath = null;
     private TextView emptyView;
     private MediaStoreNotifier notifier;
-    private List<FileItem> childFiles = new ArrayList<FileItem>();
+    private List<FileItem> fileItems = new ArrayList<FileItem>();
     private FileArrayAdapter mAdapter;
     private int selection = -1;
     private int y = 0;
@@ -74,38 +77,41 @@ public class FileExplorerScreenActivity extends Activity implements MediaStoreNo
         LinearLayout layout = new LinearLayout(mContext);
         layout.setBackgroundResource(R.drawable.main_bg);
         layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(com.vst.dev.common.util.Utils.getFitSize(mContext, 70),
-                com.vst.dev.common.util.Utils.getFitSize(mContext, 20), com.vst.dev.common.util.Utils.getFitSize(mContext, 80), 0);
         LinearLayout top = new LinearLayout(mContext);
         top.setOrientation(LinearLayout.HORIZONTAL);
+        top.setPadding(Utils.getFitSize(mContext, 70), Utils.getFitSize(mContext, 20), Utils.getFitSize(mContext, 80),
+                Utils.getFitSize(mContext, 50));
+        top.setBackgroundResource(R.drawable.bg_zhezhao_720);
         explorerDirView = new TextView(mContext);
-        explorerDirView.setTextSize(TypedValue.COMPLEX_UNIT_PX, com.vst.dev.common.util.Utils.getFitSize(mContext, 30));
+        com.vst.dev.common.util.Utils.applyFace(explorerDirView);
+        explorerDirView.setTextSize(TypedValue.COMPLEX_UNIT_PX, Utils.getFitSize(mContext, 30));
         explorerDirView.setSingleLine(true);
         explorerDirView.setEllipsize(TextUtils.TruncateAt.START);
         top.addView(explorerDirView, new LinearLayout.LayoutParams(0, -2, 1f));
         TextView okTipView = new TextView(mContext);
-        okTipView.setTextSize(TypedValue.COMPLEX_UNIT_PX, com.vst.dev.common.util.Utils.getFitSize(mContext, 20));
-        okTipView.setPadding(com.vst.dev.common.util.Utils.getFitSize(mContext, 40), 0, 0, 0);
+        okTipView.setTextSize(TypedValue.COMPLEX_UNIT_PX, Utils.getFitSize(mContext, 20));
+        okTipView.setPadding(Utils.getFitSize(mContext, 40), 0, 0, 0);
         okTipView.setTextColor(0xff999999);
-        okTipView.setText(com.vst.dev.common.util.Utils.makeImageSpannable(getResources().getString(R.string.explorer_ok_tip),
-                getResources().getDrawable(R.drawable.ic_ok_tip), 0, com.vst.dev.common.util.Utils.getFitSize(mContext, 23),
-                com.vst.dev.common.util.Utils.getFitSize(mContext, 23), ImageSpan.ALIGN_BOTTOM));
+        Utils.applyFace(okTipView);
+        okTipView.setText(Utils.makeImageSpannable(getResources().getString(R.string.explorer_ok_tip),
+                getResources().getDrawable(R.drawable.ic_ok_tip), 0, Utils.getFitSize(mContext, 23),
+                Utils.getFitSize(mContext, 23), ImageSpan.ALIGN_BOTTOM));
         top.addView(okTipView, -2, -2);
         layout.addView(top, -1, -2);
         emptyView = new TextView(mContext);
         emptyView.setGravity(Gravity.CENTER);
         emptyView.setText(R.string.deviceEmpty);
-        emptyView.setTextSize(TypedValue.COMPLEX_UNIT_PX, com.vst.dev.common.util.Utils.getFitSize(mContext, 30));
+        emptyView.setTextSize(TypedValue.COMPLEX_UNIT_PX, Utils.getFitSize(mContext, 30));
         mListView = new ListView(mContext);
         mListView.setEmptyView(emptyView);
         mListView.setOnItemClickListener(this);
         mListView.setOnItemLongClickListener(this);
         mListView.setSelector(R.drawable.explorer_item_selector_bg);
         mListView.setVerticalScrollBarEnabled(false);
+        mListView.setDivider(getResources().getDrawable(R.drawable.cutline));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -1);
-        lp.leftMargin = com.vst.dev.common.util.Utils.getFitSize(mContext, 150);
-        lp.rightMargin = com.vst.dev.common.util.Utils.getFitSize(mContext, 150);
-        lp.topMargin = com.vst.dev.common.util.Utils.getFitSize(mContext, 50);
+        lp.leftMargin = Utils.getFitSize(mContext, 220);
+        lp.rightMargin = Utils.getFitSize(mContext, 220);
         layout.addView(mListView, lp);
         layout.addView(emptyView);
         setContentView(layout);
@@ -128,23 +134,33 @@ public class FileExplorerScreenActivity extends Activity implements MediaStoreNo
                 mContext.startActivity(intent);
                 break;
             case Music:
-                Utils.playAudioFile(mContext, fileItem.mFile);
+                UUtils.playAudioFile(mContext, fileItem.mFile);
                 break;
             case Video:
             case BDMV:
                 String relativePath = fileItem.mFile.getAbsolutePath().replace(mDevice.path, "");
-                long mediaId = -1;
-                long deviceId = -1;
-                Cursor c = mContext.getContentResolver().query(MediaStore.MediaBase.CONTENT_URI, null,
-                        MediaStore.MediaBase.FIELD_RELATIVE_PATH + "=?", new String[]{relativePath}, null);
-                if (c.moveToFirst()) {
-                    mediaId = c.getLong(c.getColumnIndex(MediaStore.MediaBase._ID));
-                    deviceId = c.getLong(c.getColumnIndex(MediaStore.MediaBase.FIELD_DEVICE_ID));
+                if (!fileItem.isInStore) {
+                    Uri uri = MediaStoreHelper.addNewMediaBase(mContext.getContentResolver(),
+                            fileItem.mFile.getAbsolutePath(), mDevice.path, mDevice.id, null);
+                    if (uri != null) {
+                        long mediaId = ContentUris.parseId(uri);
+                        MyIntentService.startActionEntryInfo(mContext, fileItem.mFile.getAbsolutePath(), null, mediaId);
+                    }
                 }
-                c.close();
-                Uri uri = Utils.getMediaUri(fileItem.mFile.getAbsolutePath());
-                if (uri != null) {
-                    Utils.playMediaFile(mContext, uri, mediaId, deviceId, mDevice.path);
+                Cursor cursor = mContext.getContentResolver().query(MediaStore.MediaBase.CONTENT_URI, null,
+                        MediaStore.MediaBase.FIELD_RELATIVE_PATH + "=?", new String[]{relativePath}, null);
+                MediaInfo mediaInfo = null;
+                if (cursor.moveToFirst()) {
+                    String name = cursor.getString(cursor.getColumnIndex(MediaStore.MediaBase.FIELD_NAME));
+                    String title = cursor.getString(cursor.getColumnIndex(MediaStore.MediaInfo.FIELD_TITLE));
+                    String poster = cursor.getString(cursor.getColumnIndex(MediaStore.MediaInfo.FIELD_POSTER));
+                    long mediaId = cursor.getLong(cursor.getColumnIndex("_id"));
+                    mediaInfo = new MediaInfo(mediaId, fileItem.mFile.getAbsolutePath(), name, title, poster, mDevice.id, mDevice.path);
+                }
+                cursor.close();
+                if (mediaInfo != null) {
+                    Uri uri = UUtils.getMediaUri(fileItem.mFile.getAbsolutePath());
+                    UUtils.playMediaFile(mContext, uri, mediaInfo);
                 }
                 break;
             default:
@@ -182,7 +198,7 @@ public class FileExplorerScreenActivity extends Activity implements MediaStoreNo
         ImageView i = new ImageView(mContext);
         i.setImageResource(R.drawable.ic_opration_add_toast_bg);
         i.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        root.addView(i, com.vst.dev.common.util.Utils.getFitSize(mContext, 226), com.vst.dev.common.util.Utils.getFitSize(mContext, 173));
+        root.addView(i, Utils.getFitSize(mContext, 226), Utils.getFitSize(mContext, 173));
         t.setView(root);
         t.setGravity(Gravity.CENTER, 0, 0);
         t.setDuration(Toast.LENGTH_SHORT);
@@ -193,7 +209,7 @@ public class FileExplorerScreenActivity extends Activity implements MediaStoreNo
     protected void updateUI() {
         if (mListView != null) {
             if (mAdapter == null) {
-                mAdapter = new FileArrayAdapter(mContext, childFiles);
+                mAdapter = new FileArrayAdapter(mContext, fileItems);
                 mListView.setAdapter(mAdapter);
             } else {
                 mAdapter.notifyDataSetChanged();
@@ -224,13 +240,14 @@ public class FileExplorerScreenActivity extends Activity implements MediaStoreNo
     }
 
     public boolean onBack() {
-        if (!mExplorerRootPath.equals(mDevice.path)) {
-            updateDate(new File(mExplorerRootPath).getParentFile(), new File(mExplorerRootPath));
-            updateUI();
-            return true;
-        } else {
-            return false;
+        if (mExplorerRootPath != null) {
+            if (!mExplorerRootPath.equals(mDevice.path)) {
+                updateDate(new File(mExplorerRootPath).getParentFile(), new File(mExplorerRootPath));
+                updateUI();
+                return true;
+            }
         }
+        return false;
     }
 
     @Override
@@ -246,7 +263,7 @@ public class FileExplorerScreenActivity extends Activity implements MediaStoreNo
                 }
             } else {
                 mDeviceExists = false;
-                childFiles.clear();
+                fileItems.clear();
                 updateUI();
             }
         }
@@ -265,15 +282,28 @@ public class FileExplorerScreenActivity extends Activity implements MediaStoreNo
                 return false;
             }
         });
-        childFiles.clear();
+        fileItems.clear();
         if (files != null && files.length > 0) {
             for (int i = 0; i < files.length; i++) {
                 File f = files[i];
                 FileItem fileItem = new FileItem(f);
-                childFiles.add(fileItem);
+                fileItems.add(fileItem);
             }
+            Collections.sort(fileItems, new Comparator<FileItem>() {
+                @Override
+                public int compare(FileItem lhs, FileItem rhs) {
+                    if (lhs.mCategory == FileCategory.Dir && rhs.mCategory != FileCategory.Dir) {
+                        return -1;
+                    }
+                    if (lhs.mCategory != FileCategory.Dir && rhs.mCategory == FileCategory.Dir) {
+                        return 1;
+                    }
+                    return 0;
+                }
+            });
+
             if (child != null && child.exists()) {
-                selection = childFiles.indexOf(new FileItem(child));
+                selection = fileItems.indexOf(new FileItem(child));
             }
         }
     }
@@ -292,39 +322,37 @@ public class FileExplorerScreenActivity extends Activity implements MediaStoreNo
             if (convertView == null) {
                 LinearLayout layout = new LinearLayout(mContext);
                 layout.setOrientation(LinearLayout.HORIZONTAL);
-                layout.setPadding(
-                        com.vst.dev.common.util.Utils.getFitSize(mContext, 40),
-                        com.vst.dev.common.util.Utils.getFitSize(mContext, 25),
-                        com.vst.dev.common.util.Utils.getFitSize(mContext, 40),
-                        com.vst.dev.common.util.Utils.getFitSize(mContext, 25));
+                layout.setPadding(Utils.getFitSize(mContext, 40), Utils.getFitSize(mContext, 25), Utils.getFitSize(mContext, 40),
+                        Utils.getFitSize(mContext, 25));
                 layout.setGravity(Gravity.CENTER_VERTICAL);
                 ImageView leftView = new ImageView(mContext);
                 leftView.setScaleType(ImageView.ScaleType.FIT_CENTER);
-                layout.addView(leftView, com.vst.dev.common.util.Utils.getFitSize(mContext, 142), com.vst.dev.common.util.Utils.getFitSize(mContext, 82));
+                layout.addView(leftView, Utils.getFitSize(mContext, 142), Utils.getFitSize(mContext, 82));
                 LinearLayout centerView = new LinearLayout(mContext);
                 centerView.setOrientation(LinearLayout.VERTICAL);
                 centerView.setGravity(Gravity.BOTTOM);
-                centerView.setPadding(com.vst.dev.common.util.Utils.getFitSize(mContext, 30), 0,
-                        com.vst.dev.common.util.Utils.getFitSize(mContext, 30), 0);
+                centerView.setPadding(Utils.getFitSize(mContext, 30), 0,
+                        Utils.getFitSize(mContext, 30), 0);
                 TextView nameView = new TextView(mContext);
                 nameView.setGravity(Gravity.CENTER_VERTICAL);
-                nameView.setTextSize(TypedValue.COMPLEX_UNIT_PX, com.vst.dev.common.util.Utils.getFitSize(mContext, 24));
+                Utils.applyFace(nameView);
+                nameView.setTextSize(TypedValue.COMPLEX_UNIT_PX, Utils.getFitSize(mContext, 24));
                 nameView.setSingleLine(true);
                 nameView.setEllipsize(TextUtils.TruncateAt.MARQUEE);
                 nameView.setMarqueeRepeatLimit(Integer.MAX_VALUE);
                 LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
-                lp.bottomMargin = com.vst.dev.common.util.Utils.getFitSize(mContext, 10);
+                lp.bottomMargin = Utils.getFitSize(mContext, 10);
                 centerView.addView(nameView, lp);
                 ImageView videoInStoreView = new ImageView(mContext);
                 videoInStoreView.setScaleType(ImageView.ScaleType.FIT_CENTER);
                 videoInStoreView.setImageResource(R.drawable.ic_disk_tishi);
-                centerView.addView(videoInStoreView, com.vst.dev.common.util.Utils.getFitSize(mContext, 110),
-                        com.vst.dev.common.util.Utils.getFitSize(mContext, 25));
+                centerView.addView(videoInStoreView, Utils.getFitSize(mContext, 110),
+                        Utils.getFitSize(mContext, 25));
                 layout.addView(centerView, new LinearLayout.LayoutParams(0, -1, 1f));
                 ImageView rightView = new ImageView(mContext);
                 rightView.setImageResource(R.drawable.ic_disk_folder_open_nor);
-                layout.addView(rightView, com.vst.dev.common.util.Utils.getFitSize(mContext, 13),
-                        com.vst.dev.common.util.Utils.getFitSize(mContext, 25));
+                layout.addView(rightView, Utils.getFitSize(mContext, 13),
+                        Utils.getFitSize(mContext, 25));
                 holder = new ViewHolder();
                 holder.fileIconView = leftView;
                 holder.fileNameView = nameView;
@@ -345,8 +373,8 @@ public class FileExplorerScreenActivity extends Activity implements MediaStoreNo
             } else {
                 holder.folderOpenView.setVisibility(View.INVISIBLE);
             }
-            holder.fileIconView.setImageResource(Utils.getFileCategoryIcon(fileItem.mCategory));
-            holder.fileNameView.setText(fileItem.mFile.getName());
+            holder.fileIconView.setImageResource(UUtils.getFileCategoryIcon(fileItem.mCategory));
+            holder.fileNameView.setText(fileItem.mFile.getName().replace("-", "- "));
             return convertView;
         }
 
@@ -366,7 +394,7 @@ public class FileExplorerScreenActivity extends Activity implements MediaStoreNo
 
         FileItem(File file) {
             mFile = file;
-            mCategory = Utils.getFileCategory(mFile);
+            mCategory = UUtils.getFileCategory(mFile);
             if (mCategory == FileCategory.Video || mCategory == FileCategory.BDMV) {
                 String relativePath = file.getAbsolutePath().replace(mDevice.path, "");
                 long mediaId = MediaStoreHelper.mediaIsInStore(mContext.getContentResolver(), mDevice.id, relativePath);

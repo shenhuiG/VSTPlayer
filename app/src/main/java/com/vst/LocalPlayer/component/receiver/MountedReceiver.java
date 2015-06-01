@@ -9,7 +9,7 @@ import android.content.Intent;
 import android.net.Uri;
 import android.util.Log;
 
-import com.vst.LocalPlayer.Utils;
+import com.vst.LocalPlayer.UUtils;
 import com.vst.LocalPlayer.component.provider.MediaStore;
 import com.vst.LocalPlayer.component.provider.MediaStoreHelper;
 import com.vst.LocalPlayer.component.service.MyIntentService;
@@ -29,13 +29,13 @@ public class MountedReceiver extends BroadcastReceiver {
             String uuid;
             boolean isNewDevice = true;
             ContentResolver cr = context.getContentResolver();
-            if ((uuid = Utils.readDeviceUUID(path)) != null) {
+            if ((uuid = UUtils.readDeviceUUID(path)) != null) {
                 isNewDevice = !MediaStoreHelper.deviceInStore(cr, uuid);
             }
             if (isNewDevice) {
                 //new device
                 //Scanner
-                uuid = Utils.writeDeviceUUID(path);
+                uuid = UUtils.writeDeviceUUID(path);
                 Uri uri = MediaStoreHelper.addNewMediaDevice(cr, uuid, path);
                 Log.d(getClass().getSimpleName(), "ACTION_MEDIA_MOUNTED new device path=" + path + " ,id=" + ContentUris.parseId(uri));
                 MyIntentService.startActionScanner(context, path, ContentUris.parseId(uri));

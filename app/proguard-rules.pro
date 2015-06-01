@@ -15,3 +15,11 @@
 #-keepclassmembers class fqcn.of.javascript.interface.for.webview {
 #   public *;
 #}
+
+#vlc
+-dontwarn org.videolan.libvlc.**
+-keep class org.videolan.libvlc.** { *; }
+-dontwarn android.support.v4.**
+-keep class android.support.v4.** { *; }
+-keep public class * extends android.support.v4.**
+-keep public class * extends android.app.Fragment

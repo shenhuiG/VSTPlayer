@@ -102,4 +102,7 @@
     <string name="videos_menu_tip">* 按【菜单键】按菜单键弹出导航菜单</string>
     <string name="videos_ok_tip">* 长按【OK键】弹出编辑菜单</string>
 
+    <string name="upgrad_now">立即更新</string>
+    <string name="upgrad_later">稍后更新</string>
+
 </resources>

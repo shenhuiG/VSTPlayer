@@ -322,7 +322,7 @@ public class Utils {
                 if (sTypeface == null) {
                     try {
                         sTypeface = Typeface.createFromAsset(ctx.getApplicationContext().getAssets(),
-                                "fonts/flfbls.ttf");
+                                "fonts/fzltqhjt.TTF");
                     } catch (Exception e) {
                         e.printStackTrace();
                     }

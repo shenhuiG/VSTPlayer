@@ -1,8 +1,6 @@
 package com.vst.LocalPlayer.component.activity;
 
-import android.app.Activity;
 import android.content.ContentResolver;
-import android.content.ContentUris;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
@@ -22,10 +20,11 @@ import com.vst.LocalPlayer.component.provider.MediaStore;
 import com.vst.LocalPlayer.component.provider.MediaStoreHelper;
 import com.vst.LocalPlayer.component.service.MyIntentService;
 import com.vst.LocalPlayer.model.DeviceInfo;
+import com.vst.dev.common.util.Utils;
 
 import java.util.ArrayList;
 
-public class DeviceScreenActivity extends Activity implements MediaStoreNotifier.CallBack {
+public class DeviceScreenActivity extends BaseActivity implements MediaStoreNotifier.CallBack {
 
     private Context mContext = null;
     private ArrayList<DeviceInfo> deviceInfos = new ArrayList<DeviceInfo>();
@@ -60,20 +59,25 @@ public class DeviceScreenActivity extends Activity implements MediaStoreNotifier
                 com.vst.dev.common.util.Utils.getFitSize(mContext, 60), 0);
         topView.setHorizontalGravity(LinearLayout.HORIZONTAL);
         TextView text1 = new TextView(mContext);
+        Utils.applyFace(text1);
         text1.setTextSize(TypedValue.COMPLEX_UNIT_PX, com.vst.dev.common.util.Utils.getFitSize(mContext, 30));
         text1.setText(R.string.device_tip1);
         topView.addView(text1);
         mCountView = new TextView(mContext);
+        Utils.applyFace(mCountView);
+        mCountView.setPadding(Utils.getFitSize(mContext, 8), 0, 0, 0);
         mCountView.setTextSize(TypedValue.COMPLEX_UNIT_PX, com.vst.dev.common.util.Utils.getFitSize(mContext, 24));
         mCountView.setText(getString(R.string.device_tip2, 0));
         topView.addView(mCountView, new LinearLayout.LayoutParams(0, -2, 1f));
         TextView menuTipView = new TextView(mContext);
+        Utils.applyFace(menuTipView);
         menuTipView.setPadding(0, 0, com.vst.dev.common.util.Utils.getFitSize(mContext, 15), 0);
         menuTipView.setText(com.vst.dev.common.util.Utils.makeImageSpannable(getResources().getString(R.string.device_menu_tip),
                 getResources().getDrawable(R.drawable.ic_menu_tip), 0, com.vst.dev.common.util.Utils.getFitSize(mContext, 23),
                 com.vst.dev.common.util.Utils.getFitSize(mContext, 23), ImageSpan.ALIGN_BOTTOM));
         topView.addView(menuTipView);
         TextView upTipView = new TextView(mContext);
+        Utils.applyFace(upTipView);
         upTipView.setText(com.vst.dev.common.util.Utils.makeImageSpannable(getResources().getString(R.string.device_up_tip),
                 getResources().getDrawable(R.drawable.ic_up_tip), 0, com.vst.dev.common.util.Utils.getFitSize(mContext, 23),
                 com.vst.dev.common.util.Utils.getFitSize(mContext, 23), ImageSpan.ALIGN_BOTTOM));
@@ -106,6 +110,32 @@ public class DeviceScreenActivity extends Activity implements MediaStoreNotifier
         mCenterLayout.requestFocus();
     }
 
+    private void showPullToast() {
+        Toast t = new Toast(mContext);
+        LinearLayout root = new LinearLayout(mContext);
+        ImageView i = new ImageView(mContext);
+        i.setImageResource(R.drawable.ic_pull_device_toast);
+        i.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        root.addView(i, com.vst.dev.common.util.Utils.getFitSize(mContext, 226), com.vst.dev.common.util.Utils.getFitSize(mContext, 173));
+        t.setView(root);
+        t.setGravity(Gravity.CENTER, 0, 0);
+        t.setDuration(Toast.LENGTH_SHORT);
+        t.show();
+    }
+
+    private void showScaleToast() {
+        Toast t = new Toast(mContext);
+        LinearLayout root = new LinearLayout(mContext);
+        ImageView i = new ImageView(mContext);
+        i.setImageResource(R.drawable.ic_scale_device_toast);
+        i.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        root.addView(i, com.vst.dev.common.util.Utils.getFitSize(mContext, 226), com.vst.dev.common.util.Utils.getFitSize(mContext, 173));
+        t.setView(root);
+        t.setGravity(Gravity.CENTER, 0, 0);
+        t.setDuration(Toast.LENGTH_SHORT);
+        t.show();
+    }
+
 
     private View makeDeviceView(final DeviceInfo deviceInfo) {
         FrameLayout deviceView = new FrameLayout(mContext);
@@ -128,9 +158,11 @@ public class DeviceScreenActivity extends Activity implements MediaStoreNotifier
                     ContentResolver cr = mContext.getContentResolver();
                     MediaStoreHelper.updateMediaDeviceValid(cr, deviceInfo.path, deviceInfo.uuid, false);
                     MediaStoreHelper.updateMediaValidByDevice(cr, deviceInfo.id, false);
+                    showPullToast();
                     return true;
                 } else if (keyCode == KeyEvent.KEYCODE_MENU) {
                     MyIntentService.startActionScanner(mContext, deviceInfo.path, deviceInfo.id);
+                    showScaleToast();
                     return true;
                 }
                 return false;
@@ -141,6 +173,7 @@ public class DeviceScreenActivity extends Activity implements MediaStoreNotifier
         deviceBg.setScaleType(ImageView.ScaleType.FIT_CENTER);
         deviceView.addView(deviceBg, com.vst.dev.common.util.Utils.getFitSize(mContext, 240), com.vst.dev.common.util.Utils.getFitSize(mContext, 308));
         TextView mDeviceNumTxtView = new TextView(mContext);
+        Utils.applyFace(mDeviceNumTxtView);
         mDeviceNumTxtView.setText(deviceInfo.name);
         mDeviceNumTxtView.setGravity(Gravity.CENTER_VERTICAL);
         mDeviceNumTxtView.setTextSize(TypedValue.COMPLEX_UNIT_PX, com.vst.dev.common.util.Utils.getFitSize(mContext, 28));
